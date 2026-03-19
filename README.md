@@ -1,38 +1,60 @@
-# Commissioning-Grade Trading Workstation
+# ⚡️ Trading Workstation (Commissioning Grade)
 
-A professional, supervised trading assistant focused on high-integrity signals, evidence-backed decisions, and operator control.
+A high-integrity, supervised trading workstation designed for individual operators who value evidence and trust over signal quantity.
 
-## Workflow
-Market Scan -> Signal Identification -> Queue -> Operator Approval -> Broker Execution -> Position Management -> Journaling -> Analytics -> Validation Lab
+## 🚀 Quick Start (Recommended)
 
-## Features
-- **Strategy Lab**: Scan for high-probability setups using multiple engines (EMA Pullback, Breakout Retest).
-- **Execution Queue**: Disciplined trade entry with risk controls and manual approval.
-- **Validation Lab**: Full historical backtesting engine with walk-forward Out-of-Sample (OOS) validation.
-- **ML Meta-Layer**: Automatic model retraining from closed trades to rank and filter signals.
-- **Operations Cockpit**: Real-time overview of system health, active presets, and portfolio state.
-- **Journaling**: Record post-trade reflections, discipline scores, and identify pattern mistakes.
+To get the workstation up and running as quickly as possible:
 
-## Tech Stack
-- **Backend**: FastAPI, SQLModel (SQLite), Scikit-Learn, Pandas.
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS, Lucide Icons.
-- **Broker**: First-class support for Exness (MT5) and built-in Paper broker.
+1.  **Run Setup**: This installs all Python and Node dependencies.
+    ```bash
+    ./setup.sh
+    ```
+2.  **Start the Workstation**:
+    ```bash
+    ./start.sh
+    ```
+3.  **Open in Browser**:
+    Go to: **[http://localhost:5173](http://localhost:5173)**
 
-## How to Run
-1. **Install Dependencies**:
-   ```bash
-   cd backend && pip install -r requirements.txt
-   cd ../frontend && npm install
-   ```
-2. **Start the Application**:
-   ```bash
-   ./start.sh
-   ```
-3. **Access the UI**:
-   Open [http://localhost:5173](http://localhost:5173) in your browser.
+---
 
-## Reliability & Trust
-- **Kill Switch**: Global emergency stop for all executions.
-- **Risk Controls**: Max open positions and asset group exposure caps.
-- **Audit Trail**: Every execution and signal is tracked with a detailed history.
-- **Evidence-Driven**: Experiments must pass OOS winrate thresholds before promotion to "Active".
+## 🛠 Key Components
+
+### 1. Strategy Lab
+Perform market scans using core engines:
+- **EMA Pullback**: Identifies trend reclaim opportunities.
+- **Breakout Retest**: Tracks volatility expansions.
+- **Auto Best Setup**: Automatically finds the strongest setup across timeframes.
+
+### 2. Execution Queue
+Strict trade admission with mandatory operator approval.
+- Built-in **Risk Sizing** (Volume normalization for Exness/MT5).
+- **Duplicate Position Protection**.
+- **Audit Trails** for every decision.
+
+### 3. Validation Lab
+Don't trust, verify.
+- **Realistic Backtesting Engine**: Replay strategies over historical data with spread and commission models.
+- **Walk-forward Validation**: Automatic split of In-Sample and Out-of-Sample (OOS) data.
+
+### 4. ML Meta-Layer
+- **Automatic Retraining**: The background scheduler periodically retrains a meta-model on your closed trade history.
+- **Ranking & Filtering**: Signals are ranked by probability of success before entering the queue.
+
+### 5. Position Management
+- **Live MT5 Integration**: Connected to Exness via MT5 adapter.
+- **Paper Broker**: Built-in environment for risk-free testing.
+- **Management Loop**: Auto Break-even, Trailing Stops, and Target Ladders.
+
+---
+
+## 🛡 Reliability & Safety
+- **Kill Switch**: Instant global trade blockage.
+- **Exposure Caps**: Max open positions and Asset Group (Forex, Crypto, etc.) limits.
+- **Journaling**: Integrated post-trade reflections and discipline scoring.
+- **Backups**: One-click state export for system recovery.
+
+## 🧰 Tech Stack
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS.
+- **Backend**: FastAPI (Python), SQLModel, Scikit-Learn (ML), Pandas.

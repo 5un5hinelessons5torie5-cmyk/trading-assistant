@@ -1,35 +1,53 @@
 #!/bin/bash
-echo "Starting Trading Workstation..."
+echo "🚀 Starting Trading Workstation..."
 
-# Cleanup existing processes
-echo "Cleaning up existing processes on ports 8000 and 5173..."
-kill $(lsof -t -i :8000) 2>/dev/null || true
-kill $(lsof -t -i :5173) 2>/dev/null || true
+# 1. Kill any existing processes on ports 8000 (Backend) and 5173 (Frontend)
+echo "🧹 Cleaning up existing processes..."
+fuser -k 8000/tcp 2>/dev/null
+fuser -k 5173/tcp 2>/dev/null
 sleep 2
 
-# 1. Start Backend
-echo "Launching Backend..."
+# 2. Start Backend in background
+echo "📦 Launching Backend (FastAPI)..."
 cd backend
 python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > ../backend.log 2>&1 &
 BACKEND_PID=$!
 
-# 2. Start Frontend
-echo "Launching Frontend..."
+# 3. Start Frontend in background
+echo "💻 Launching Frontend (Vite)..."
 cd ../frontend
-# Force vite to use 5173 or exit
 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
 
-echo "------------------------------------------------"
-echo "Workstation is running!"
-echo "Backend: http://localhost:8000"
-echo "Frontend: http://localhost:5173"
-echo "Logs: backend.log, frontend.log"
-echo "------------------------------------------------"
-echo "Press Ctrl+C to stop all services."
+# 4. Wait for services to be ready
+echo "⏳ Waiting for services to initialize..."
+for i in {1..10}; do
+    if curl -s http://localhost:8000/ > /dev/null && curl -s http://localhost:5173/ > /dev/null; then
+        break
+    fi
+    sleep 2
+done
 
-# Trap Ctrl+C to kill background processes
-trap "kill $BACKEND_PID $FRONTEND_PID; exit" INT
+# Final check
+if curl -s http://localhost:8000/ > /dev/null; then
+    echo "✅ Backend is ONLINE: http://localhost:8000"
+else
+    echo "❌ Backend FAILED to start. Check backend.log"
+fi
 
-# Wait for both processes
+if curl -s http://localhost:5173/ > /dev/null; then
+    echo "✅ Frontend is ONLINE: http://localhost:5173"
+else
+    echo "❌ Frontend FAILED to start. Check frontend.log"
+fi
+
+echo "------------------------------------------------"
+echo "Workstation is active!"
+echo "Press Ctrl+C to shut down all services."
+echo "------------------------------------------------"
+
+# Trap Ctrl+C to kill both services
+trap "echo '🛑 Shutting down...'; kill $BACKEND_PID $FRONTEND_PID; exit" INT
+
+# Wait for processes
 wait $BACKEND_PID $FRONTEND_PID

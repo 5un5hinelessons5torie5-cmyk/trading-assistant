@@ -3,7 +3,7 @@
 > vite --host 0.0.0.0 --port 5173 --strictPort
 
 
-  VITE v8.0.1  ready in 592 ms
+  VITE v8.0.1  ready in 304 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://192.168.0.2:5173/
