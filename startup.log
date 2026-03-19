@@ -1,0 +1,30 @@
+Starting Trading Workstation...
+Workstation is running!
+Backend: http://localhost:8000
+Frontend: http://localhost:5173
+
+> frontend@0.0.0 dev
+> vite --host 0.0.0.0 --port 5173
+
+
+  VITE v8.0.1  ready in 887 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.0.2:5173/
+WARNING:root:MetaTrader5 package not found. MT5Adapter will run in mock mode.
+INFO:     Started server process [80196]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [80196]
+./start.sh: line 20: cho: command not found
+------------------------------------------------
+Workstation is running!
+Backend: http://localhost:8000
+Frontend: http://localhost:5173
+Logs: backend.log, frontend.log
+------------------------------------------------
+Press Ctrl+C to stop all services.
