@@ -48,8 +48,28 @@ class QueueManager:
 
         # Check system risk controls
         settings = self.db.exec(select(SystemSettings)).first()
-        if settings and settings.kill_switch:
-            return {"error": "Kill switch is active. Execution blocked."}
+        if settings:
+            if settings.kill_switch:
+                return {"error": "Kill switch is active. Execution blocked."}
+
+            # Max open positions check
+            open_pos_count = len(self.db.exec(select(Position).where(Position.status == "open")).all())
+            if open_pos_count >= settings.max_mt5_open_positions:
+                return {"error": f"Max open positions ({settings.max_mt5_open_positions}) reached."}
+
+            # Asset group caps check
+            signal = self.db.get(Signal, item.signal_id)
+            symbol_info = self.db.exec(select(Symbol).where(Symbol.name == signal.symbol)).first()
+            if symbol_info and settings.asset_group_caps:
+                caps = json.loads(settings.asset_group_caps)
+                group = symbol_info.asset_group
+                if group in caps:
+                    group_count = len(self.db.exec(
+                        select(Position).join(Symbol, Position.symbol == Symbol.name)
+                        .where(Position.status == "open", Symbol.asset_group == group)
+                    ).all())
+                    if group_count >= caps[group]:
+                        return {"error": f"Exposure cap for {group} ({caps[group]}) reached."}
 
         signal = self.db.get(Signal, item.signal_id)
 

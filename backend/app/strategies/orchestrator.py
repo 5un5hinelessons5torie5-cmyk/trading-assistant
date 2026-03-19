@@ -44,9 +44,21 @@ class SignalOrchestrator:
                 # but let's just use it
                 all_signals.append(s)
 
+        # Split execution engines vs filters
+        execution_signals = [s for s in all_signals if s.strategy_role == "entry_engine"]
+        regime_signals = [s for s in all_signals if s.strategy_role == "regime_filter"]
+
+        # Apply filters (Example: Only allow entry if regime matches side)
+        final_signals = []
+        for es in execution_signals:
+            # Check for regime confluence on same symbol/timeframe
+            matches = [rs for rs in regime_signals if rs.symbol == es.symbol and rs.timeframe == es.timeframe]
+            if not matches or matches[0].side == es.side:
+                final_signals.append(es)
+
         # Rank via ML Meta Layer
         ml = MLMetaLayer()
-        ranked_signals = await ml.rank_signals(all_signals)
+        ranked_signals = await ml.rank_signals(final_signals)
 
         for s in ranked_signals:
             self.db.add(s)

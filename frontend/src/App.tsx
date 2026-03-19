@@ -1,39 +1,43 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  LayoutDashboard, Activity, FlaskConical, ListChecks, History, Zap, Shield, TrendingUp, BarChart3, Settings, ExternalLink, Filter
+  LayoutDashboard, Activity, FlaskConical, ListChecks, History, Zap, Shield, TrendingUp, BarChart3, Settings, ExternalLink, Filter, Tags, MessageSquare, Download, Bell, ShoppingCart
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
 interface Symbol { id: number; name: string; status: string; asset_group: string; broker: string; blocked_reason?: string; }
 interface Signal { id: number; strategy_id: string; strategy_label: string; symbol: string; timeframe: string; side: string; entry_price: number; confidence: number; ml_score: number | null; }
-interface QueueItem { id: number; signal_id: number; status: string; requested_volume: number; risk_reward: number; queue_admission_note: string; }
-interface Position { id: number; broker_ticket: string; symbol: string; side: string; volume: number; entry_price: number; current_price: number; pnl: number; status: string; stop_loss: number; take_profit: number; created_at: string; }
+interface QueueItem { id: number; signal_id: number; status: string; requested_volume: number; risk_reward: number; queue_admission_note: string; created_at: string; execution_message?: string; }
+interface Position { id: number; broker_ticket: string; symbol: string; side: string; volume: number; entry_price: number; current_price: number; pnl: number; status: string; stop_loss: number; take_profit: number; created_at: string; tp_ladder: string; is_paper: boolean; }
 interface Experiment { id: number; strategy_id: string; preset_name: string; oos_winrate: number; trust_score: number; is_active: boolean; oos_trades_count: number; oos_profit_factor: number; }
+interface Alert { id: number; category: string; level: string; title: string; message: string; is_read: boolean; created_at: string; }
 interface SystemSettings { kill_switch: boolean; max_mt5_open_positions: number; daily_loss_stop_pct: number; }
 interface Analytics { total_trades: number; win_rate: number; total_pnl: number; avg_pnl: number; }
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
 
   const fetchData = async () => {
     try {
-      const [symRes, sigRes, qRes, posRes, expRes, setRes, anaRes] = await Promise.all([
+      const [symRes, sigRes, qRes, posRes, expRes, setRes, anaRes, alRes] = await Promise.all([
         axios.get(`${API_BASE}/brokers/symbols`),
         axios.get(`${API_BASE}/strategies/signals`),
         axios.get(`${API_BASE}/execution/queue`),
         axios.get(`${API_BASE}/management/positions`),
         axios.get(`${API_BASE}/validation/experiments`),
         axios.get(`${API_BASE}/system/settings`),
-        axios.get(`${API_BASE}/analytics/summary`)
+        axios.get(`${API_BASE}/analytics/summary`),
+        axios.get(`${API_BASE}/alerts/?unread_only=false`)
       ]);
       setSymbols(symRes.data);
       setSignals(sigRes.data);
@@ -42,6 +46,7 @@ const App = () => {
       setExperiments(expRes.data);
       setSettings(setRes.data);
       setAnalytics(anaRes.data);
+      setAlerts(alRes.data);
     } catch (err) { console.error(err); }
   };
 
@@ -61,6 +66,16 @@ const App = () => {
      fetchData();
   };
 
+  const exportState = async () => {
+     const res = await axios.get(`${API_BASE}/system/export`);
+     const blob = new Blob([JSON.stringify(JSON.parse(res.data), null, 2)], { type: 'application/json' });
+     const url = URL.createObjectURL(blob);
+     const link = document.createElement('a');
+     link.href = url;
+     link.download = `workstation_backup_${new Date().toISOString().split('T')[0]}.json`;
+     link.click();
+  };
+
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
       <aside className="w-64 bg-card border-r border-border flex flex-col shrink-0">
@@ -75,12 +90,17 @@ const App = () => {
           <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={18}/>} label="Cockpit" />
           <NavItem active={activeTab === 'signals'} onClick={() => setActiveTab('signals')} icon={<Activity size={18}/>} label="Strategy Lab" />
           <NavItem active={activeTab === 'queue'} onClick={() => setActiveTab('queue')} icon={<ListChecks size={18}/>} label="Execution Queue" />
+          <NavItem active={activeTab === 'orders'} onClick={() => setActiveTab('orders')} icon={<ShoppingCart size={18}/>} label="Orders" />
           <NavItem active={activeTab === 'positions'} onClick={() => setActiveTab('positions')} icon={<Shield size={18}/>} label="Positions" />
           <NavItem active={activeTab === 'lab'} onClick={() => setActiveTab('lab')} icon={<FlaskConical size={18}/>} label="Validation" />
           <NavItem active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} icon={<BarChart3 size={18}/>} label="Analytics" />
+          <NavItem active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')} icon={<Bell size={18}/>} label="Alerts" />
           <NavItem active={activeTab === 'journal'} onClick={() => setActiveTab('journal')} icon={<History size={18}/>} label="Journal" />
         </nav>
         <div className="p-4 border-t border-border bg-background/30">
+          <button onClick={exportState} className="w-full flex items-center justify-center gap-2 py-2 mb-4 bg-secondary/50 hover:bg-secondary rounded text-[10px] font-black uppercase tracking-widest transition-colors border border-border">
+             <Download size={14}/> Export Backup
+          </button>
           <div className="flex items-center justify-between mb-4 px-2">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Kill Switch</span>
             <button onClick={toggleKillSwitch} className={`w-10 h-5 rounded-full relative transition-colors ${settings?.kill_switch ? 'bg-danger shadow-lg shadow-danger/20' : 'bg-secondary'}`}>
@@ -102,6 +122,10 @@ const App = () => {
              <div className="flex items-center gap-2">Risk: <span className="text-warning">{settings?.daily_loss_stop_pct}% Stop</span></div>
           </div>
           <div className="flex items-center gap-4">
+            <div className="relative mr-2">
+               <Bell size={16} className="text-muted-foreground cursor-pointer" />
+               {alerts.filter(a => !a.is_read).length > 0 && <div className="absolute -top-1 -right-1 w-2 h-2 bg-danger rounded-full" />}
+            </div>
             <Settings size={16} className="text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
             <div className="w-8 h-8 rounded bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-xs shadow-inner shadow-primary/10">OP</div>
           </div>
@@ -210,10 +234,10 @@ const App = () => {
             )}
 
             {activeTab === 'queue' && (
-               <Panel title="Execution Queue">
+               <Panel title="Active Execution Queue">
                  <div className="grid gap-4">
-                    {queue.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase tracking-widest">Execution Queue Empty</div>}
-                    {queue.map(q => (
+                    {queue.filter(q => q.status === 'active').length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase tracking-widest">No active queue items</div>}
+                    {queue.filter(q => q.status === 'active').map(q => (
                       <div key={q.id} className="flex items-center justify-between p-5 bg-card rounded border border-border hover:border-primary/40 transition-all shadow-sm group">
                         <div className="flex items-center gap-8">
                            <div className="w-12 h-12 bg-background border border-border rounded-lg flex items-center justify-center font-mono text-sm font-black text-muted-foreground group-hover:text-primary transition-colors">#{q.id}</div>
@@ -245,12 +269,41 @@ const App = () => {
                </Panel>
             )}
 
+            {activeTab === 'orders' && (
+               <Panel title="Order Execution History">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground uppercase font-black tracking-widest">
+                        <th className="py-4 px-3">Order ID</th>
+                        <th className="py-4 px-3">Signal</th>
+                        <th className="py-4 px-3">Status</th>
+                        <th className="py-4 px-3">Volume</th>
+                        <th className="py-4 px-3">Result</th>
+                        <th className="py-4 px-3 text-right">Timestamp</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
+                      {queue.map(q => (
+                        <tr key={q.id} className="hover:bg-secondary/10 transition-colors">
+                          <td className="py-4 px-3 font-mono font-bold">#{q.id}</td>
+                          <td className="py-4 px-3 font-bold">Signal #{q.signal_id}</td>
+                          <td className="py-4 px-3"><Badge status={q.status}>{q.status}</Badge></td>
+                          <td className="py-4 px-3 font-mono">{q.requested_volume}</td>
+                          <td className="py-4 px-3 text-[10px] font-bold text-muted-foreground italic">{q.execution_message || 'N/A'}</td>
+                          <td className="py-4 px-3 text-right text-[10px] opacity-50">{q.created_at}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </Panel>
+            )}
+
             {activeTab === 'positions' && (
                <Panel title="Active Broker Positions">
                   <div className="grid gap-4">
                     {positions.filter(p => p.status === 'open').length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase tracking-widest">No open positions</div>}
                     {positions.filter(p => p.status === 'open').map(p => (
-                       <div key={p.id} className="p-5 bg-card border border-border rounded-lg shadow-md flex items-center justify-between">
+                       <div key={p.id} className="p-5 bg-card border border-border rounded-lg shadow-md flex items-center justify-between cursor-pointer hover:border-primary/30 transition-colors" onClick={() => setSelectedPosition(p)}>
                           <div className="flex items-center gap-6">
                              <div className={`w-1.5 h-10 rounded-full ${p.side === 'buy' ? 'bg-success' : 'bg-danger'}`}></div>
                              <div>
@@ -258,7 +311,7 @@ const App = () => {
                                   <span className="font-black text-lg font-mono">{p.symbol}</span>
                                   <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${p.side === 'buy' ? 'bg-success/10 text-success border-success/20' : 'bg-danger/10 text-danger border-danger/20'}`}>{p.side} {p.volume}L</span>
                                 </div>
-                                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ticket: #{p.broker_ticket}</div>
+                                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Ticket: #{p.broker_ticket} {p.is_paper ? '(PAPER)' : '(LIVE)'}</div>
                              </div>
                           </div>
                           <div className="flex items-center gap-12">
@@ -379,6 +432,29 @@ const App = () => {
                </div>
             )}
 
+            {activeTab === 'alerts' && (
+               <Panel title="System Alerts & Warnings">
+                  <div className="space-y-3">
+                     {alerts.length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase tracking-widest">No system alerts</div>}
+                     {alerts.map(a => (
+                        <div key={a.id} className={`p-4 rounded border ${a.level === 'critical' ? 'bg-danger/5 border-danger/30' : 'bg-secondary/10 border-border'}`}>
+                           <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-3">
+                                 <Badge status={a.level === 'critical' ? 'blocked' : 'research_only'}>{a.level}</Badge>
+                                 <span className="font-black text-sm uppercase tracking-tight">{a.title}</span>
+                              </div>
+                              <span className="text-[10px] opacity-40 font-bold">{a.created_at}</span>
+                           </div>
+                           <p className="text-xs text-muted-foreground leading-relaxed">{a.message}</p>
+                           {!a.is_read && (
+                             <button onClick={() => axios.post(`${API_BASE}/alerts/mark-read/${a.id}`).then(fetchData)} className="mt-3 text-[9px] font-black uppercase tracking-widest text-primary hover:underline">Mark as read</button>
+                           )}
+                        </div>
+                     ))}
+                  </div>
+               </Panel>
+            )}
+
             {activeTab === 'journal' && (
                <Panel title="Trading Journal">
                   <div className="flex items-center gap-4 mb-6 border-b border-border pb-6 overflow-x-auto">
@@ -388,7 +464,7 @@ const App = () => {
                   <div className="space-y-4">
                     {positions.filter(p => p.status === 'closed').length === 0 && <div className="py-20 text-center opacity-30 font-bold uppercase tracking-widest">No journal entries available</div>}
                     {positions.filter(p => p.status === 'closed').map(p => (
-                       <div key={p.id} className="p-6 bg-card border border-border rounded-xl shadow-sm hover:border-primary/30 transition-all">
+                       <div key={p.id} className="p-6 bg-card border border-border rounded-xl shadow-sm hover:border-primary/30 transition-all cursor-pointer" onClick={() => setSelectedPosition(p)}>
                           <div className="flex justify-between items-start">
                              <div className="flex gap-6">
                                 <div className={`w-1 h-12 rounded-full ${p.pnl >= 0 ? 'bg-success' : 'bg-danger'}`}></div>
@@ -400,17 +476,82 @@ const App = () => {
                                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider opacity-50">{p.created_at} • {p.side} {p.volume}L @ {p.entry_price.toFixed(5)}</div>
                                 </div>
                              </div>
-                             <div className="text-right">
+                             <div className="text-right flex flex-col items-end gap-2">
                                 <div className={`text-2xl font-black font-mono ${p.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
                                    {p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)}
                                 </div>
-                                <div className="text-[9px] font-black uppercase tracking-widest opacity-30 mt-1">Realized PnL</div>
+                                <div className="flex gap-2">
+                                  <Tags size={14} className="opacity-20"/><MessageSquare size={14} className="opacity-20"/>
+                                </div>
                              </div>
                           </div>
                        </div>
                     ))}
                   </div>
                </Panel>
+            )}
+
+            {selectedPosition && (
+               <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-8">
+                 <div className="bg-card border border-border rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="p-6 border-b border-border flex justify-between items-center bg-secondary/5">
+                       <h2 className="font-black text-lg uppercase tracking-widest">Position Inspection: {selectedPosition.symbol}</h2>
+                       <button onClick={() => setSelectedPosition(null)} className="text-muted-foreground hover:text-foreground font-black text-xl">×</button>
+                    </div>
+                    <div className="p-8 grid grid-cols-2 gap-8 overflow-y-auto max-h-[80vh]">
+                       <div className="space-y-6">
+                          <Panel title="Journal Reflection">
+                             <div className="space-y-4">
+                                <div>
+                                   <label className="text-[9px] font-black text-muted-foreground uppercase mb-2 block tracking-widest">Operator Notes</label>
+                                   <textarea className="w-full bg-background border border-border rounded-lg p-4 text-xs h-32 focus:border-primary outline-none transition-colors" placeholder="Describe setup context..."></textarea>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                   <div>
+                                      <label className="text-[9px] font-black text-muted-foreground uppercase mb-2 block tracking-widest">Discipline</label>
+                                      <div className="flex gap-1">
+                                         {[1,2,3,4,5].map(s => <button key={s} className="flex-1 h-8 rounded bg-background border border-border text-[10px] font-black hover:border-primary transition-all">{s}</button>)}
+                                      </div>
+                                   </div>
+                                   <div>
+                                      <label className="text-[9px] font-black text-muted-foreground uppercase mb-2 block tracking-widest">Setup Quality</label>
+                                      <div className="flex gap-1">
+                                         {[1,2,3,4,5].map(s => <button key={s} className="flex-1 h-8 rounded bg-background border border-border text-[10px] font-black hover:border-primary transition-all">{s}</button>)}
+                                      </div>
+                                   </div>
+                                </div>
+                             </div>
+                          </Panel>
+                       </div>
+                       <div className="space-y-6">
+                          <Panel title="Live Target Ladder">
+                             <div className="space-y-3">
+                                {[
+                                   { label: 'TP1 (0.5R)', price: selectedPosition.entry_price * 1.01, hit: true },
+                                   { label: 'TP2 (1.0R)', price: selectedPosition.entry_price * 1.02, hit: false },
+                                   { label: 'TP3 (2.0R)', price: selectedPosition.entry_price * 1.04, hit: false },
+                                ].map((tp, idx) => (
+                                   <div key={idx} className={`flex items-center justify-between p-3 rounded border ${tp.hit ? 'bg-success/5 border-success/30' : 'bg-background border-border'}`}>
+                                      <div className="flex items-center gap-3">
+                                         <div className={`w-2 h-2 rounded-full ${tp.hit ? 'bg-success' : 'bg-muted-foreground opacity-30'}`}></div>
+                                         <span className="text-[10px] font-black uppercase">{tp.label}</span>
+                                      </div>
+                                      <span className="font-mono text-[10px] font-bold">{tp.price.toFixed(5)}</span>
+                                   </div>
+                                ))}
+                                <div className="pt-2">
+                                   <button className="w-full py-2 bg-secondary border border-border rounded text-[9px] font-black uppercase tracking-widest hover:border-primary transition-all">+ Add Scaling Target</button>
+                                </div>
+                             </div>
+                          </Panel>
+                          <div className="grid grid-cols-2 gap-4">
+                             <button className="py-4 bg-danger/10 text-danger border border-danger/20 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-danger hover:text-white transition-all shadow-lg shadow-danger/5">Panic Close</button>
+                             <button onClick={() => setSelectedPosition(null)} className="py-4 bg-primary text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 hover:brightness-110 transition-all">Save Changes</button>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+               </div>
             )}
           </div>
         </main>

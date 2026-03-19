@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from ..database import get_session
 from ..models.system import SystemSettings
 from typing import List
+from .backup import export_state
 
 router = APIRouter(prefix="/system", tags=["System"])
 
@@ -38,3 +39,7 @@ def toggle_kill_switch(session: Session = Depends(get_session)):
     session.add(settings)
     session.commit()
     return {"kill_switch": settings.kill_switch}
+
+@router.get("/export")
+async def export_workstation_state():
+    return await export_state()
