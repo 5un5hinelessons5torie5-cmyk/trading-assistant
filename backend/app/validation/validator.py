@@ -3,37 +3,50 @@ from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 from ..models.validation import Experiment, FeatureSnapshot
 from ..models.signal import Signal
+from .backtest_engine import BacktestEngine
+from ..strategies.ema_pullback import EMAPullbackStrategy
+from ..strategies.breakout_retest import BreakoutRetestStrategy
 import json
+import pandas as pd
 
 class ValidationLab:
     def __init__(self, db_session: Session):
         self.db = db_session
+        self.engine = BacktestEngine()
 
     async def run_backtest(self, strategy_id: str, symbol: str, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
-        # Implementation of walk-forward validation mock
-        # Real logic: split [start_date, end_date] into in-sample and out-of-sample (OOS)
+        # 1. Fetch data (mocking for environment)
+        data = pd.DataFrame({
+            'open': [1.0800 + i * 0.0001 for i in range(500)],
+            'high': [1.0805 + i * 0.0001 for i in range(500)],
+            'low': [1.0795 + i * 0.0001 for i in range(500)],
+            'close': [1.0802 + i * 0.0001 for i in range(500)]
+        })
 
-        total_days = (end_date - start_date).days
-        oos_days = int(total_days * 0.3)
-        split_date = end_date - timedelta(days=oos_days)
+        # 2. Select strategy
+        strategy = None
+        if strategy_id == "ema_pullback": strategy = EMAPullbackStrategy()
+        elif strategy_id == "breakout_retest": strategy = BreakoutRetestStrategy()
 
-        # Mock in-sample performance
-        in_sample_wr = 0.58
-        in_sample_pf = 2.1
+        if not strategy: return {"error": "Unknown strategy"}
 
-        # Mock OOS performance (evidence-driven)
-        oos_wr = 0.54
-        oos_pf = 1.9
-        oos_trades = 120
+        # 3. Walk-forward split
+        oos_idx = int(len(data) * 0.7)
+        in_sample_data = data.iloc[:oos_idx]
+        oos_data = data.iloc[oos_idx:]
+
+        # 4. Run engine
+        is_result = await self.engine.run(strategy, in_sample_data)
+        oos_result = await self.engine.run(strategy, oos_data)
 
         return {
             "strategy_id": strategy_id,
             "start_date": start_date.isoformat(),
-            "split_date": split_date.isoformat(),
+            "split_date": (start_date + timedelta(days=200)).isoformat(),
             "end_date": end_date.isoformat(),
-            "in_sample": {"winrate": in_sample_wr, "profit_factor": in_sample_pf},
-            "oos": {"winrate": oos_wr, "profit_factor": oos_pf, "trades_count": oos_trades},
-            "trust_score": 0.82 if oos_wr > 0.5 and oos_trades > 50 else 0.4
+            "in_sample": {"winrate": is_result["win_rate"], "profit_factor": is_result["profit_factor"]},
+            "oos": {"winrate": oos_result["win_rate"], "profit_factor": oos_result["profit_factor"], "trades_count": oos_result["trades_count"]},
+            "trust_score": 0.82 if oos_result["win_rate"] > 0.5 else 0.4
         }
 
     async def promote_experiment(self, experiment_id: int):

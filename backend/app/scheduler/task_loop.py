@@ -5,6 +5,7 @@ from sqlmodel import Session
 from ..database import engine
 from ..strategies.orchestrator import SignalOrchestrator
 from ..models.symbol import Symbol
+from ..ml.trainer import MLTrainer
 from sqlmodel import select
 
 class SchedulerLoop:
@@ -35,6 +36,10 @@ class SchedulerLoop:
 
             # Task 3: Sync positions
             # ...
+
+            # Task 4: Periodic ML Retraining
+            trainer = MLTrainer(session)
+            await trainer.train_model()
 
             session.commit()
 
