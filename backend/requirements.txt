@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+alembic
+pydantic-settings
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+MetaTrader5
+pandas
+numpy
+scikit-learn
+httpx
