@@ -31,10 +31,13 @@ class SchedulerLoop:
             for sym in symbols:
                 await orchestrator.run_scan(sym.name, "H1", sym.broker)
 
-            # Task 2: Revalidate experiments
-            # ...
+            # Task 2: Sync Positions (Reconciliation)
+            from ..management.position_tracker import PositionTracker
+            tracker = PositionTracker(session)
+            await tracker.sync_with_broker("Exness")
+            await tracker.sync_with_broker("Paper")
 
-            # Task 3: Sync positions
+            # Task 3: Revalidate experiments
             # ...
 
             # Task 4: Periodic ML Retraining

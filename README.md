@@ -17,6 +17,13 @@ To get the workstation up and running as quickly as possible:
 3.  **Open in Browser**:
     Go to: **[http://localhost:5173](http://localhost:5173)**
 
+## Linking your Exness MT5 Account
+1.  Open the **Brokers** tab in the sidebar.
+2.  Enter your **MT5 Login ID**, **Password**, and **Server** (e.g., Exness-MT5-Real10).
+3.  Click **Initialize Connection**.
+4.  Test the connection to ensure your balance and account info are correctly fetched.
+5.  Once active, the **Strategy Lab** will begin using live data from your broker for market scans.
+
 ---
 
 ## 🛠 Key Components

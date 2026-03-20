@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+import pandas as pd
 from .base import BrokerAdapter
 from ..models.symbol import Symbol
 
@@ -18,21 +19,10 @@ class PaperAdapter(BrokerAdapter):
         self.connected = False
 
     async def get_account_info(self) -> Dict[str, Any]:
-        return {
-            "balance": self.balance,
-            "equity": self.equity,
-            "margin": 0.0,
-            "margin_free": self.equity,
-            "currency": "USD"
-        }
+        return {"balance": self.balance, "equity": self.equity, "currency": "USD"}
 
     async def get_symbols(self) -> List[Symbol]:
-        # Return a standard list for paper trading
-        return [
-            Symbol(name="EURUSD_PAPER", broker="Paper", asset_group="forex", status="live_ready"),
-            Symbol(name="XAUUSD_PAPER", broker="Paper", asset_group="metals", status="live_ready"),
-            Symbol(name="BTCUSD_PAPER", broker="Paper", asset_group="crypto", status="live_ready"),
-        ]
+        return [Symbol(name="EURUSD_PAPER", broker="Paper", asset_group="forex", status="live_ready")]
 
     async def get_latest_tick(self, symbol: str) -> Dict[str, Any]:
         return {"bid": 1.0, "ask": 1.0001, "last": 1.0, "time": 0}
@@ -40,20 +30,15 @@ class PaperAdapter(BrokerAdapter):
     async def execute_order(self, order_data: Dict[str, Any]) -> Dict[str, Any]:
         ticket = str(self.next_ticket)
         self.next_ticket += 1
-
-        position = {
-            "ticket": ticket,
-            "symbol": order_data.get("symbol"),
-            "type": order_data.get("type"),
-            "volume": order_data.get("volume"),
-            "price_open": order_data.get("price"),
-            "sl": order_data.get("sl"),
-            "tp": order_data.get("tp"),
-            "time": 0,
-            "profit": 0.0
-        }
-        self.positions.append(position)
-        return {"retcode": 10009, "comment": "Paper order done", "order": ticket, "deal": ticket}
+        return {"retcode": 10009, "order": ticket}
 
     async def get_positions(self) -> List[Dict[str, Any]]:
         return self.positions
+
+    async def get_history(self, symbol: str, timeframe: str, count: int) -> Optional[pd.DataFrame]:
+        return pd.DataFrame({
+            'close': [1.0 + i * 0.0001 for i in range(count)],
+            'high': [1.0005 + i * 0.0001 for i in range(count)],
+            'low': [0.9995 + i * 0.0001 for i in range(count)],
+            'open': [1.0 + i * 0.0001 for i in range(count)]
+        })

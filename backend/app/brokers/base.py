@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
+import pandas as pd
 from ..models.symbol import Symbol
 
 class BrokerAdapter(ABC):
@@ -29,4 +30,8 @@ class BrokerAdapter(ABC):
 
     @abstractmethod
     async def get_positions(self) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    async def get_history(self, symbol: str, timeframe: str, count: int) -> Optional[pd.DataFrame]:
         pass

@@ -1,13 +1,16 @@
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from sqlmodel import Session, select
 from ..models.validation import Experiment, FeatureSnapshot
 from ..models.signal import Signal
+from ..models.broker import BrokerAccount
 from .backtest_engine import BacktestEngine
 from ..strategies.ema_pullback import EMAPullbackStrategy
 from ..strategies.breakout_retest import BreakoutRetestStrategy
+from ..brokers.manager import broker_manager
 import json
 import pandas as pd
+import logging
 
 class ValidationLab:
     def __init__(self, db_session: Session):
@@ -15,13 +18,28 @@ class ValidationLab:
         self.engine = BacktestEngine()
 
     async def run_backtest(self, strategy_id: str, symbol: str, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
-        # 1. Fetch data (mocking for environment)
-        data = pd.DataFrame({
-            'open': [1.0800 + i * 0.0001 for i in range(500)],
-            'high': [1.0805 + i * 0.0001 for i in range(500)],
-            'low': [1.0795 + i * 0.0001 for i in range(500)],
-            'close': [1.0802 + i * 0.0001 for i in range(500)]
-        })
+        # 1. Fetch data from active broker if possible
+        account = self.db.exec(select(BrokerAccount).where(BrokerAccount.is_active == True)).first()
+        adapter = broker_manager.get_adapter(account.broker_name if account else "Paper")
+
+        if account and adapter and hasattr(adapter, 'login'):
+            adapter.login = account.login
+            adapter.password = account.password
+            adapter.server = account.server
+
+        if not adapter.connected: await adapter.connect()
+
+        # Attempt to get 500 bars for backtest
+        data = await adapter.get_history(symbol, "H1", 500)
+
+        if data is None or len(data) < 100:
+            # Fallback only if broker fails
+            data = pd.DataFrame({
+                'open': [1.0800 + i * 0.0001 for i in range(500)],
+                'high': [1.0805 + i * 0.0001 for i in range(500)],
+                'low': [1.0795 + i * 0.0001 for i in range(500)],
+                'close': [1.0802 + i * 0.0001 for i in range(500)]
+            })
 
         # 2. Select strategy
         strategy = None
@@ -51,15 +69,10 @@ class ValidationLab:
 
     async def promote_experiment(self, experiment_id: int):
         exp = self.db.get(Experiment, experiment_id)
-        if not exp:
-            return
+        if not exp: return
 
-        # Retire others for same strategy
         active_others = self.db.exec(
-            select(Experiment).where(
-                Experiment.strategy_id == exp.strategy_id,
-                Experiment.is_active == True
-            )
+            select(Experiment).where(Experiment.strategy_id == exp.strategy_id, Experiment.is_active == True)
         ).all()
         for other in active_others:
             other.is_active = False
