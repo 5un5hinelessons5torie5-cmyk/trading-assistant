@@ -5,12 +5,15 @@ from ..models.symbol import Symbol
 from ..models.broker import BrokerAccount
 from .manager import broker_manager
 from .eligibility import get_symbol_status, get_blocked_reason
+from ..system.security import encrypt_password, decrypt_password
 from typing import List, Dict, Any
 
 router = APIRouter(prefix="/brokers", tags=["Brokers"])
 
 @router.post("/accounts", response_model=BrokerAccount)
 async def create_account(account: BrokerAccount, session: Session = Depends(get_session)):
+    # Encrypt password before saving
+    account.password = encrypt_password(account.password)
     session.add(account)
     session.commit()
     session.refresh(account)
@@ -18,7 +21,11 @@ async def create_account(account: BrokerAccount, session: Session = Depends(get_
 
 @router.get("/accounts", response_model=List[BrokerAccount])
 async def get_accounts(session: Session = Depends(get_session)):
-    return session.exec(select(BrokerAccount)).all()
+    accounts = session.exec(select(BrokerAccount)).all()
+    # Mask passwords in the response
+    for acc in accounts:
+        acc.password = "********"
+    return accounts
 
 @router.post("/test-connection/{account_id}")
 async def test_connection(account_id: int, session: Session = Depends(get_session)):
@@ -26,8 +33,9 @@ async def test_connection(account_id: int, session: Session = Depends(get_sessio
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
+    password = decrypt_password(account.password)
     from .mt5_adapter import MT5Adapter
-    adapter = MT5Adapter(login=account.login, password=account.password, server=account.server)
+    adapter = MT5Adapter(login=account.login, password=password, server=account.server)
     success = await adapter.connect()
     if success:
         acc_info = await adapter.get_account_info()
@@ -41,11 +49,10 @@ async def get_all_symbols(session: Session = Depends(get_session)):
     # Sync with active accounts
     accounts = session.exec(select(BrokerAccount).where(BrokerAccount.is_active == True)).all()
     for acc in accounts:
-        # Update manager with credentials
         adapter = broker_manager.get_adapter(acc.broker_name)
         if adapter and hasattr(adapter, 'login'):
             adapter.login = acc.login
-            adapter.password = acc.password
+            adapter.password = decrypt_password(acc.password)
             adapter.server = acc.server
 
     symbols = await broker_manager.get_all_symbols()
@@ -72,15 +79,13 @@ async def get_all_symbols(session: Session = Depends(get_session)):
 @router.get("/account-info/{broker_name}")
 async def get_account_info(broker_name: str):
     adapter = broker_manager.get_adapter(broker_name)
-    if not adapter:
-        return {"error": "Broker not found"}
+    if not adapter: return {"error": "Broker not found"}
     if not adapter.connected: await adapter.connect()
     return await adapter.get_account_info()
 
 @router.get("/positions/{broker_name}")
 async def get_positions(broker_name: str):
     adapter = broker_manager.get_adapter(broker_name)
-    if not adapter:
-        return {"error": "Broker not found"}
+    if not adapter: return {"error": "Broker not found"}
     if not adapter.connected: await adapter.connect()
     return await adapter.get_positions()
