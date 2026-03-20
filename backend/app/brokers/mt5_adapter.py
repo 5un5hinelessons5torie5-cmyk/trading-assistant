@@ -104,7 +104,9 @@ class MT5Adapter(BrokerAdapter):
         }
 
         result = mt5.order_send(request)
-        return result._asdict() if result else {"error": "Order send failed"}
+        if result is None:
+            return {"error": "Order send failed (None response)", "retcode": -1}
+        return result._asdict()
 
     async def get_positions(self) -> List[Dict[str, Any]]:
         if not self.connected: return []

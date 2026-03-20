@@ -92,8 +92,9 @@ class QueueManager:
         }
 
         result = await adapter.execute_order(order)
+        retcode = result.get("retcode")
 
-        if result.get("retcode") in [10009, 10008]: # Done or Placed
+        if retcode in [10009, 10008]: # Done or Placed
             item.status = "used"
             item.executed_volume = item.requested_volume
             item.fill_price = signal.entry_price # Simple fill mock
@@ -113,8 +114,26 @@ class QueueManager:
             tracker = PositionTracker(self.db)
             await tracker.register_executed_item(item.id, str(result.get("order") or result.get("ticket")))
         else:
-            item.status = "active" # Keep active on failure? or move to 'failed'
-            item.execution_message = f"Execution failed: {result.get('error', 'Unknown')}"
+            # Better error mapping for common MT5 retcodes
+            retcode_map = {
+                10013: "Invalid Request",
+                10014: "Invalid Volume",
+                10015: "Invalid Price",
+                10016: "Invalid Stops",
+                10017: "Trade Disabled",
+                10018: "Market Closed",
+                10019: "No Money",
+                10020: "Price Changed",
+                10021: "Too Many Requests",
+                10022: "Expired",
+                10023: "Rejected",
+                10024: "Cancelled",
+                10025: "Placed",
+                10026: "Done",
+            }
+            error_desc = retcode_map.get(retcode, result.get('comment', 'Unknown'))
+            item.status = "active" # Keep active on failure for review
+            item.execution_message = f"Execution failed ({retcode}): {error_desc}"
 
         item.decided_at = datetime.utcnow()
         self.db.add(item)

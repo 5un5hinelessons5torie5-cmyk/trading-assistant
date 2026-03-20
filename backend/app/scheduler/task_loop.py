@@ -1,12 +1,12 @@
 import asyncio
 import logging
 from datetime import datetime
-from sqlmodel import Session
+from sqlmodel import Session, select
 from ..database import engine
 from ..strategies.orchestrator import SignalOrchestrator
 from ..models.symbol import Symbol
-from ..ml.trainer import MLTrainer
-from sqlmodel import select
+from ..models.execution import Position
+from ..ml.meta_model import ml_trainer
 
 class SchedulerLoop:
     def __init__(self, interval_seconds: int = 60):
@@ -29,6 +29,7 @@ class SchedulerLoop:
             symbols = session.exec(select(Symbol).where(Symbol.status == "live_ready")).all()
             orchestrator = SignalOrchestrator(session)
             for sym in symbols:
+                # Basic scan on H1. In a production system, this would be more dynamic.
                 await orchestrator.run_scan(sym.name, "H1", sym.broker)
 
             # Task 2: Sync Positions (Reconciliation)
@@ -37,12 +38,10 @@ class SchedulerLoop:
             await tracker.sync_with_broker("Exness")
             await tracker.sync_with_broker("Paper")
 
-            # Task 3: Revalidate experiments
-            # ...
-
-            # Task 4: Periodic ML Retraining
-            trainer = MLTrainer(session)
-            await trainer.train_model()
+            # Task 3: Periodic ML Retraining from closed history
+            closed_positions = session.exec(select(Position).where(Position.status == "closed")).all()
+            if closed_positions:
+                ml_trainer.train_from_history(closed_positions)
 
             session.commit()
 
