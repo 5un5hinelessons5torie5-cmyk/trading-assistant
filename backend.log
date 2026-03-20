@@ -1,11 +1,44 @@
 WARNING:root:MetaTrader5 package not found. MT5Adapter will run in mock mode.
-INFO:     Started server process [89100]
+INFO:     Started server process [126679]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:36108 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:36116 - "GET / HTTP/1.1" 200 OK
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [89100]
+INFO:     127.0.0.1:57310 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57318 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41918 - "GET /brokers/symbols HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41924 - "GET /strategies/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41928 - "GET /execution/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41940 - "GET /management/positions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41948 - "GET /validation/experiments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41924 - "GET /analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41940 - "GET /alerts/?unread_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41918 - "GET /brokers/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41948 - "GET /strategies/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41928 - "GET /management/positions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41958 - "GET /system/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41924 - "GET /brokers/symbols HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41940 - "GET /validation/experiments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41958 - "GET /brokers/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41928 - "GET /analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41918 - "GET /execution/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41948 - "GET /alerts/?unread_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41924 - "GET /system/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59808 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51574 - "GET /brokers/symbols HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51586 - "GET /strategies/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51592 - "GET /execution/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51594 - "GET /management/positions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51598 - "GET /validation/experiments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51574 - "GET /analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51592 - "GET /alerts/?unread_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51586 - "GET /brokers/symbols HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51598 - "GET /brokers/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51614 - "GET /system/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51594 - "GET /execution/queue HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51574 - "GET /validation/experiments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51592 - "GET /strategies/signals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51598 - "GET /management/positions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51586 - "GET /analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51614 - "GET /alerts/?unread_only=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51594 - "GET /brokers/accounts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51574 - "GET /system/settings HTTP/1.1" 200 OK

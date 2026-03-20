@@ -18,16 +18,28 @@ async def sync_positions(broker_name: str, session: Session = Depends(get_sessio
     return {"status": "synced"}
 
 @router.post("/update-position/{pos_id}")
-async def update_position(pos_id: int, sl: float = None, tp: float = None, session: Session = Depends(get_session)):
+async def update_position(
+    pos_id: int,
+    sl: float = None,
+    tp: float = None,
+    notes: str = None,
+    mistakes: str = None,
+    discipline_score: int = None,
+    setup_quality_score: int = None,
+    session: Session = Depends(get_session)
+):
     pos = session.get(Position, pos_id)
     if not pos:
         raise HTTPException(status_code=404, detail="Position not found")
 
-    if sl is not None:
-        pos.stop_loss = sl
-    if tp is not None:
-        pos.take_profit = tp
+    if sl is not None: pos.stop_loss = sl
+    if tp is not None: pos.take_profit = tp
+    if notes is not None: pos.notes = notes
+    if mistakes is not None: pos.mistakes = mistakes
+    if discipline_score is not None: pos.discipline_score = discipline_score
+    if setup_quality_score is not None: pos.setup_quality_score = setup_quality_score
 
     session.add(pos)
     session.commit()
+    session.refresh(pos)
     return pos

@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Optional
 from sqlmodel import Session, select
 from ..models.execution import Position, ExecutionQueueItem
 from ..brokers.manager import broker_manager
+import logging
 
 class PositionTracker:
     def __init__(self, db_session: Session):
@@ -10,25 +11,24 @@ class PositionTracker:
 
     async def sync_with_broker(self, broker_name: str):
         adapter = broker_manager.get_adapter(broker_name)
-        if not adapter:
-            return
-
-        if not adapter.connected:
-            await adapter.connect()
+        if not adapter: return
+        if not adapter.connected: await adapter.connect()
 
         broker_positions = await adapter.get_positions()
 
-        # This is a simplification.
-        # In a real app, we'd reconcile tickets and update PnL, etc.
+        # 1. Update existing and register new
+        active_tickets = []
         for bp in broker_positions:
             ticket = str(bp.get("ticket"))
+            active_tickets.append(ticket)
+
             existing = self.db.exec(select(Position).where(Position.broker_ticket == ticket)).first()
             if existing:
-                existing.current_price = bp.get("price_current", 0.0)
-                existing.pnl = bp.get("profit", 0.0)
+                existing.current_price = bp.get("price_current", existing.current_price)
+                existing.pnl = bp.get("profit", existing.pnl)
+                existing.status = "open"
                 self.db.add(existing)
             else:
-                # Registration of manual or external positions
                 new_pos = Position(
                     broker_ticket=ticket,
                     symbol=bp.get("symbol"),
@@ -43,6 +43,16 @@ class PositionTracker:
                     status="open"
                 )
                 self.db.add(new_pos)
+
+        # 2. Mark closed positions
+        open_in_db = self.db.exec(select(Position).where(Position.status == "open")).all()
+        for pos in open_in_db:
+            if pos.broker_ticket not in active_tickets:
+                # Reconciliation: position no longer at broker
+                pos.status = "closed"
+                pos.closed_at = datetime.utcnow()
+                self.db.add(pos)
+                logging.info(f"Reconciled closed position: {pos.broker_ticket}")
 
         self.db.commit()
 

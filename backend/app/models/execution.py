@@ -8,7 +8,7 @@ class ExecutionQueueItem(TimestampModel, table=True):
     signal_id: int = Field(foreign_key="signal.id")
     queue_rank: int = Field(default=0)
 
-    # Review states: active, used, unused, expired, ignored
+    # Review states: active, used, unused, expired, ignored, hidden
     status: str = Field(default="active", index=True)
 
     requested_volume: float
@@ -20,8 +20,8 @@ class ExecutionQueueItem(TimestampModel, table=True):
     execution_message: Optional[str] = None
     queue_admission_note: Optional[str] = None
     preflight_summary: Optional[str] = None
-    preflight_snapshot: Optional[str] = None # JSON snapshot of market/risk state
-    audit_trail: str = Field(default="[]") # JSON list of events
+    preflight_snapshot: Optional[str] = None
+    audit_trail: str = Field(default="[]")
 
     decided_at: Optional[datetime] = None
 
@@ -30,15 +30,14 @@ class Position(TimestampModel, table=True):
     queue_item_id: Optional[int] = Field(default=None, foreign_key="executionqueueitem.id")
     broker_ticket: str = Field(index=True, unique=True)
     symbol: str = Field(index=True)
-    side: str # buy, sell
+    side: str
     volume: float
     entry_price: float
     current_price: float = Field(default=0.0)
     stop_loss: float
     take_profit: float
-    tp_ladder: str = Field(default="[]") # JSON list of targets
+    tp_ladder: str = Field(default="[]")
 
-    # Management State
     is_paper: bool = Field(default=False)
     is_manual: bool = Field(default=False)
     is_breakeven_activated: bool = Field(default=False)
@@ -49,10 +48,9 @@ class Position(TimestampModel, table=True):
     pnl: float = Field(default=0.0)
     closed_at: Optional[datetime] = None
 
-    # Journaling Integration
     notes: Optional[str] = None
-    tags: str = Field(default="[]") # JSON
-    mistakes: str = Field(default="[]") # JSON
+    tags: str = Field(default="[]")
+    mistakes: str = Field(default="[]")
     discipline_score: Optional[int] = None
     setup_quality_score: Optional[int] = None
-    emotions: str = Field(default="[]") # JSON
+    emotions: str = Field(default="[]")

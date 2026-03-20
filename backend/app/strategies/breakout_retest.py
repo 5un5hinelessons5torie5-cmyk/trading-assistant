@@ -8,22 +8,27 @@ class BreakoutRetestStrategy(Strategy):
         super().__init__("breakout_retest", "Breakout Retest", "entry_engine")
 
     async def analyze(self, symbol: str, timeframe: str, data: pd.DataFrame) -> List[Signal]:
-        if len(data) < 20: return []
+        if len(data) < 40: return []
 
-        last_close = float(data['close'].iloc[-1])
-        high_20 = float(data['high'].iloc[-20:-1].max())
+        # Identify local high/low (Resistance/Support)
+        resistance = data['high'].iloc[-40:-10].max()
+        last_close = data['close'].iloc[-1]
 
         signals = []
-        if last_close > high_20:
+        # Simplified breakout logic
+        if last_close > resistance:
+            sl = float(data['low'].iloc[-10:].min())
+            tp = last_close + (last_close - sl) * 3
+
             signals.append(Signal(
                 strategy_id=self.strategy_id,
                 strategy_label=self.display_label,
                 strategy_role=self.role,
                 broker="Exness", symbol=symbol, timeframe=timeframe,
-                side="buy", entry_price=last_close,
-                stop_loss=last_close * 0.99, take_profit=last_close * 1.03,
-                tp_ladder='[]', confidence=0.75, setup_confirmation=True,
-                queue_quality=0.7, confluence_text="Breakout of 20-bar high",
+                side="buy", entry_price=float(last_close),
+                stop_loss=float(sl), take_profit=float(tp),
+                tp_ladder="[]", confidence=0.78, setup_confirmation=True,
+                queue_quality=0.7, confluence_text=f"Bullish breakout above {resistance:.5f}",
                 execution_readiness=True
             ))
         return signals
