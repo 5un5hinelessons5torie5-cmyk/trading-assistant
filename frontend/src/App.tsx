@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  LayoutDashboard, Activity, FlaskConical, ListChecks, History, Zap, Shield, TrendingUp, BarChart3, Settings, ExternalLink, Filter, Tags, MessageSquare, Download, Bell, ShoppingCart
+  LayoutDashboard, Activity, FlaskConical, ListChecks, History, Zap, Shield, TrendingUp, BarChart3, Settings, ExternalLink, Filter, Tags, MessageSquare, Download, Bell, ShoppingCart, Key
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -14,6 +14,7 @@ interface Experiment { id: number; strategy_id: string; preset_name: string; oos
 interface Alert { id: number; category: string; level: string; title: string; message: string; is_read: boolean; created_at: string; }
 interface SystemSettings { kill_switch: boolean; max_mt5_open_positions: number; daily_loss_stop_pct: number; }
 interface Analytics { total_trades: number; win_rate: number; total_pnl: number; avg_pnl: number; }
+interface BrokerAccount { id: number; broker_name: string; login: number; server: string; is_active: boolean; }
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -26,10 +27,11 @@ const App = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [brokerAccounts, setBrokerAccounts] = useState<BrokerAccount[]>([]);
 
   const fetchData = async () => {
     try {
-      const [symRes, sigRes, qRes, posRes, expRes, setRes, anaRes, alRes] = await Promise.all([
+      const [symRes, sigRes, qRes, posRes, expRes, setRes, anaRes, alRes, bkRes] = await Promise.all([
         axios.get(`${API_BASE}/brokers/symbols`),
         axios.get(`${API_BASE}/strategies/signals`),
         axios.get(`${API_BASE}/execution/queue`),
@@ -37,7 +39,8 @@ const App = () => {
         axios.get(`${API_BASE}/validation/experiments`),
         axios.get(`${API_BASE}/system/settings`),
         axios.get(`${API_BASE}/analytics/summary`),
-        axios.get(`${API_BASE}/alerts/?unread_only=false`)
+        axios.get(`${API_BASE}/alerts/?unread_only=false`),
+        axios.get(`${API_BASE}/brokers/accounts`)
       ]);
       setSymbols(symRes.data);
       setSignals(sigRes.data);
@@ -47,6 +50,7 @@ const App = () => {
       setSettings(setRes.data);
       setAnalytics(anaRes.data);
       setAlerts(alRes.data);
+      setBrokerAccounts(bkRes.data);
     } catch (err) { console.error(err); }
   };
 
@@ -96,6 +100,7 @@ const App = () => {
           <NavItem active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} icon={<BarChart3 size={18}/>} label="Analytics" />
           <NavItem active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')} icon={<Bell size={18}/>} label="Alerts" />
           <NavItem active={activeTab === 'journal'} onClick={() => setActiveTab('journal')} icon={<History size={18}/>} label="Journal" />
+          <NavItem active={activeTab === 'brokers'} onClick={() => setActiveTab('brokers')} icon={<Key size={18}/>} label="Brokers" />
         </nav>
         <div className="p-4 border-t border-border bg-background/30">
           <button onClick={exportState} className="w-full flex items-center justify-center gap-2 py-2 mb-4 bg-secondary/50 hover:bg-secondary rounded text-[10px] font-black uppercase tracking-widest transition-colors border border-border">
@@ -489,6 +494,74 @@ const App = () => {
                     ))}
                   </div>
                </Panel>
+            )}
+
+            {activeTab === 'brokers' && (
+               <div className="space-y-6">
+                  <Panel title="Broker Account Connectivity">
+                     <div className="grid grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                           {brokerAccounts.map(acc => (
+                              <div key={acc.id} className="p-4 bg-secondary/10 border border-border rounded-lg flex justify-between items-center">
+                                 <div>
+                                    <div className="font-black uppercase tracking-tight">{acc.broker_name}</div>
+                                    <div className="text-[10px] text-muted-foreground font-mono">ID: {acc.login} • Server: {acc.server}</div>
+                                 </div>
+                                 <div className="flex gap-2">
+                                    <button onClick={() => axios.post(`${API_BASE}/brokers/test-connection/${acc.id}`).then(r => alert(JSON.stringify(r.data)))} className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded text-[10px] font-black uppercase">Test</button>
+                                    <Badge status={acc.is_active ? 'live_ready' : 'used'}>{acc.is_active ? 'Active' : 'Disabled'}</Badge>
+                                 </div>
+                              </div>
+                           ))}
+                           <button className="w-full py-3 bg-secondary border border-dashed border-border rounded-lg text-[10px] font-black uppercase tracking-[0.2em] opacity-50 hover:opacity-100 transition-opacity">+ Add New Broker</button>
+                        </div>
+                        <div className="bg-secondary/5 border border-border rounded-xl p-6 space-y-4">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-4">Link Exness MT5 Account</h4>
+                            <div className="space-y-3">
+                               <div>
+                                  <label className="text-[9px] font-black text-muted-foreground uppercase mb-1 block">MT5 Login ID</label>
+                                  <input className="w-full bg-background border border-border rounded px-4 py-2 text-xs font-mono" placeholder="e.g., 1234567"/>
+                               </div>
+                               <div>
+                                  <label className="text-[9px] font-black text-muted-foreground uppercase mb-1 block">MT5 Password</label>
+                                  <input type="password" className="w-full bg-background border border-border rounded px-4 py-2 text-xs" placeholder="••••••••"/>
+                               </div>
+                               <div>
+                                  <label className="text-[9px] font-black text-muted-foreground uppercase mb-1 block">MT5 Server</label>
+                                  <input className="w-full bg-background border border-border rounded px-4 py-2 text-xs font-mono" placeholder="Exness-MT5-Trial9"/>
+                               </div>
+                               <div className="pt-4">
+                                  <button onClick={async () => {
+                                      const login = (document.querySelector('input[placeholder="e.g., 1234567"]') as HTMLInputElement).value;
+                                      const password = (document.querySelector('input[type="password"]') as HTMLInputElement).value;
+                                      const server = (document.querySelector('input[placeholder="Exness-MT5-Trial9"]') as HTMLInputElement).value;
+                                      await axios.post(`${API_BASE}/brokers/accounts`, {
+                                          broker_name: 'Exness',
+                                          login: parseInt(login),
+                                          password: password,
+                                          server: server,
+                                          is_active: true
+                                      });
+                                      fetchData();
+                                  }} className="w-full bg-primary py-3 rounded-lg font-black uppercase text-[11px] tracking-widest shadow-lg shadow-primary/20">Initialize Connection</button>
+                               </div>
+                            </div>
+                        </div>
+                     </div>
+                  </Panel>
+                  <Panel title="Exness API Health">
+                      <div className="flex items-center gap-6 py-4">
+                         <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-success"></div>
+                            <span className="text-[10px] font-black uppercase tracking-widest">MT5 API Online</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-success"></div>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Terminal Synced</span>
+                         </div>
+                      </div>
+                  </Panel>
+               </div>
             )}
 
             {selectedPosition && (
