@@ -1,13 +1,29 @@
 import base64
 import os
 import logging
+from pathlib import Path
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-# For a production system, the key should come from an environment variable
-# or a secure vault. We use a stable derivation for this workstation demo.
-SECRET_KEY = os.getenv("WORKSTATION_SECRET", "super-secret-dev-key")
+# The encryption key must never be a fixed, hardcoded value (that would be
+# public the moment this source code is). Prefer an explicit
+# WORKSTATION_SECRET environment variable; if none is set, generate a
+# random key on first run and persist it to a local, git-ignored file so
+# it never leaves this machine.
+_SECRET_FILE = Path(__file__).resolve().parent.parent.parent / ".workstation_secret"
+
+def _load_or_create_secret() -> str:
+    env_secret = os.getenv("WORKSTATION_SECRET")
+    if env_secret:
+        return env_secret
+    if _SECRET_FILE.exists():
+        return _SECRET_FILE.read_text().strip()
+    generated = base64.urlsafe_b64encode(os.urandom(32)).decode()
+    _SECRET_FILE.write_text(generated)
+    return generated
+
+SECRET_KEY = _load_or_create_secret()
 
 def get_cipher():
     salt = b'trading-workstation-salt'
