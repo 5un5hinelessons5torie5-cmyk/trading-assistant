@@ -33,3 +33,11 @@ wheels/
 # Misc
 .DS_Store
 .vscode/
+
+# Secrets & local credentials
+.env
+.env.*
+*.secret
+.workstation_secret
+secrets.json
+credentials.json
